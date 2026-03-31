@@ -12,95 +12,113 @@ export default function ChangePasswordPage() {
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
 
   const { mutate: changePass, isPending } = useMutation({
-    mutationFn: ({ currentPassword, newPassword }) => {
+    mutationFn: (passwords) => {
       return axios.patch(
         "https://route-posts.routemisr.com/users/change-password",
         {
-        password: currentPassword, 
-        newPassword: newPassword,
+          password: passwords.currentPassword,
+          newPassword: passwords.newPassword,
         },
         {
           headers: {
-            Authorization: `Bearer ${userToken}`,
+            token: userToken, // تعديل المفتاح ليكون token ليتوافق مع API Route
           },
         }
       );
     },
-
     onSuccess: () => {
-      toast.success("success");
+      toast.success("Password updated successfully!");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
     },
-
     onError: (error) => {
-      toast.error(
-        error.response?.data?.message || "error"
-      );
+      toast.error(error.response?.data?.message || "Failed to change password");
     },
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
     if (!currentPassword || !newPassword || !confirmNewPassword) {
-      toast.warn("All fields are required");
+      toast.warn("Please fill all fields");
       return;
     }
-
     if (newPassword !== confirmNewPassword) {
-      toast.error("The new password and its confirmation do not match");
+      toast.error("New passwords do not match");
       return;
     }
-
     changePass({ currentPassword, newPassword });
   };
 
   return (
+    <div className="min-h-[80vh] flex items-center justify-center px-4 bg-[#f0f2f5]">
+      <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-xl shadow-blue-900/5 overflow-hidden border border-gray-100">
+        
+        {/* Header Section */}
+        <div className="bg-[#0B2C5A] p-8 text-center text-white">
+          <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md">
+            <i className="fa-solid fa-lock text-2xl"></i>
+          </div>
+          <h2 className="text-xl font-bold tracking-tight">Security Settings</h2>
+          <p className="text-xs text-blue-200 mt-1">Update your password to keep your account safe</p>
+        </div>
 
-<div className="max-w-md mx-auto mt-10 p-6 bg-gradient-to-r from-pink-600 to-orange-600 rounded-xl shadow-2xl text-white">
-  <h2 className="text-2xl font-bold mb-8 text-center drop-shadow-md">
-    Change Password
-  </h2>
+        {/* Form Section */}
+        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+          <div className="space-y-4">
+            <Input
+              type="password"
+              variant="flat"
+              label="Current Password"
+              placeholder="Enter current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              classNames={{
+                inputWrapper: "bg-gray-50 hover:bg-gray-100 focus-within:!bg-white border-transparent focus-within:border-[#0B2C5A] transition-all rounded-2xl h-14",
+                label: "text-[#0B2C5A] font-semibold text-xs",
+              }}
+            />
 
-  <form onSubmit={handleSubmit} className="space-y-5">
-    <Input
-      type="password"
-      label="Current password"
-      value={currentPassword}
-      onChange={(e) => setCurrentPassword(e.target.value)}
-      className="bg-white/90 backdrop-blur-sm border-0 focus:ring-2 focus:ring-white/50 text-gray-900 placeholder-gray-500"
-      labelClassName="text-white/90 font-medium"
-    />
+            <Input
+              type="password"
+              variant="flat"
+              label="New Password"
+              placeholder="Min. 8 characters"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              classNames={{
+                inputWrapper: "bg-gray-50 hover:bg-gray-100 focus-within:!bg-white border-transparent focus-within:border-[#0B2C5A] transition-all rounded-2xl h-14",
+                label: "text-[#0B2C5A] font-semibold text-xs",
+              }}
+            />
 
-    <Input
-      type="password"
-      label="New password"
-      value={newPassword}
-      onChange={(e) => setNewPassword(e.target.value)}
-      className="bg-white/90 backdrop-blur-sm border-0 focus:ring-2 focus:ring-white/50 text-gray-900 placeholder-gray-500"
-      labelClassName="text-white/90 font-medium"
-    />
+            <Input
+              type="password"
+              variant="flat"
+              label="Confirm New Password"
+              placeholder="Repeat new password"
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
+              classNames={{
+                inputWrapper: "bg-gray-50 hover:bg-gray-100 focus-within:!bg-white border-transparent focus-within:border-[#0B2C5A] transition-all rounded-2xl h-14",
+                label: "text-[#0B2C5A] font-semibold text-xs",
+              }}
+            />
+          </div>
 
-    <Input
-      type="password"
-      label="Confirm new password"
-      value={confirmNewPassword}
-      onChange={(e) => setConfirmNewPassword(e.target.value)}
-      className="bg-white/90 backdrop-blur-sm border-0 focus:ring-2 focus:ring-white/50 text-gray-900 placeholder-gray-500"
-      labelClassName="text-white/90 font-medium"
-    />
+          <Button
+            type="submit"
+            isLoading={isPending}
+            className="w-full h-14 bg-[#0B2C5A] text-white font-bold rounded-2xl shadow-lg shadow-blue-900/20 hover:bg-[#1a3d6d] transition-all active:scale-95"
+          >
+            {isPending ? "Updating..." : "Update Password"}
+          </Button>
 
-    <Button
-      type="submit"
-      color="primary"
-      isLoading={isPending}
-      className="w-full bg-white text-pink-600 font-semibold hover:bg-gray-100 transition-colors shadow-lg"
-    >
- {isPending ? "Changing..." : "Change Password"}    
-    </Button>
-  </form>
-</div>
+          <p className="text-center text-[10px] text-gray-400">
+            Forgot your password? <span className="text-[#0B2C5A] font-bold cursor-pointer hover:underline">Contact Support</span>
+          </p>
+        </form>
+      </div>
+    </div>
   );
 }

@@ -1,50 +1,51 @@
-
 import { createContext, useEffect, useState } from 'react'
 import { jwtDecode } from 'jwt-decode'
+
 export const AuthContext = createContext();
+
 export default function AuthContextProvider({ children }) {
-  const [isLoading, setIsLoading] = useState(true)
   const [userToken, setUserToken] = useState(null)
   const [userId, setUserId] = useState(null)
-  // console.log('userToken', userToken)
+  const [isLoading, setIsLoading] = useState(true)
 
+  // وظيفة لتحديث التوكن (تستخدم عند تسجيل الدخول)
   function resetUserToken(tkn) {
-    setUserToken(tkn)
+    localStorage.setItem('Tkn', tkn); // نضمن حفظه في المتصفح أولاً
+    setUserToken(tkn);
   }
+
+  // وظيفة مسح التوكن (تسجيل الخروج)
   function crearUserToken() {
-
-    setUserToken(null)
-
+    localStorage.removeItem('Tkn');
+    setUserToken(null);
+    setUserId(null);
   }
 
-  const localStorageValue = localStorage.getItem('Tkn')
-
-  useEffect(function () {
-    if (localStorageValue !== null) {
-      setUserToken(localStorageValue)
+  // التأكد من وجود توكن صالح عند تشغيل التطبيق (Initial Load)
+  useEffect(() => {
+    const localStorageValue = localStorage.getItem('Tkn');
+    if (localStorageValue) {
+      setUserToken(localStorageValue);
     }
-
-    setIsLoading(false)
+    setIsLoading(false);
   }, []);
 
-  function deCodeToken() {
-    const deCodeToken = jwtDecode(userToken)
-    userId(decoded.user)
-  }
+  // مراقبة التوكن وفك تشفيره فور تغيره
   useEffect(() => {
     if (userToken) {
-      const decoded = jwtDecode(userToken);
-      // console.log('decodedToken', decoded.user);
-    
-      setUserId(decoded.user);
+      try {
+        const decoded = jwtDecode(userToken);
+        setUserId(decoded.id || decoded.user); // تأكدي من مسمى الحقل في API (id أو user)
+      } catch (error) {
+        console.error("Invalid Token Format:", error);
+        crearUserToken(); // إذا كان التوكن تالفاً، امسحه فوراً لمنع الانهيار
+      }
     }
   }, [userToken]);
 
   return (
-    <>
-      <AuthContext.Provider value={{ userToken, resetUserToken, crearUserToken, userId }}>
-        {children}
-      </AuthContext.Provider>
-    </>
+    <AuthContext.Provider value={{ userToken, resetUserToken, crearUserToken, userId, isLoading }}>
+      {children}
+    </AuthContext.Provider>
   )
 }

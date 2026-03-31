@@ -3,324 +3,147 @@ import { useForm } from 'react-hook-form';
 import * as zod from "zod"
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from 'axios';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
-import Home from '../Home/Home';
-import Login from '../Login/Login';
+import { Link, useNavigate } from 'react-router-dom';
 import swal from 'sweetalert';
 import { ClipLoader } from "react-spinners";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebookF } from "react-icons/fa";
+import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5"; 
 
 const schema = zod.object({
-  name: zod
-    .string()
-    .nonempty("Name is required")
-    .min(3, "Name must be at least 3 characters")
-    .max(25, "Name cannot be more than 20 characters"),
-
-  email: zod.string().nonempty("email is required")
-    .email("Invalid email format"),
-
-  password: zod
-    .string()
-    .nonempty("Password is required")
-    .regex(
-      /^(?=.*[A-Za-z])(?=.*\d).{8,}$/,
-      "Password must contain uppercase, lowercase, number and special character"
-    ),
-
-  rePassword: zod.string(),
-
-  dateOfBirth: zod
-    .coerce
-    .date({
-      required_error: "Date of birth is required"
-    })
-    .refine((date) => {
-      const today = new Date();
-      const age = today.getFullYear() - date.getFullYear();
-      return age >= 10;
-    }, {
-      message: "You must be at least 10 years old"
-    })
+  name: zod.string().nonempty("الاسم مطلوب").min(3, "يجب أن يكون الاسم 3 أحرف على الأقل"),
+  email: zod.string().nonempty("البريد الإلكتروني مطلوب").email("صيغة البريد غير صحيحة"),
+  password: zod.string().nonempty("كلمة المرور مطلوبة").regex(/^(?=.*[A-Za-z])(?=.*\d).{8,}$/, "يجب أن تحتوي على حروف وأرقام و8 رموز"),
+  rePassword: zod.string().nonempty("تأكيد كلمة المرور مطلوب"),
+  dateOfBirth: zod.coerce.date({ required_error: "تاريخ الميلاد مطلوب" })
+    .refine((date) => (new Date().getFullYear() - date.getFullYear()) >= 10, "يجب أن يكون العمر 10 سنوات على الأقل")
     .transform((date) => date.toISOString().split("T")[0]),
-
-  gender: zod.enum(["male", "female"], {
-    errorMap: () => ({ message: "Gender is required" })
-  })
-})
-  .refine((data) => data.password === data.rePassword, {
-    message: "Passwords do not match",
-    path: ["rePassword"]
-  });
+  gender: zod.enum(["male", "female"], { errorMap: () => ({ message: "يرجى اختيار الجنس" }) })
+}).refine((data) => data.password === data.rePassword, {
+  message: "كلمات المرور غير متطابقة",
+  path: ["rePassword"]
+});
 
 export default function Register() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRePassword, setShowRePassword] = useState(false);
+  const navigate = useNavigate();
 
-  const [succes, setSucces] = useState(false)
-  const [isError, setError] = useState(false)
-  const [isLoding, setIsLoding] = useState(false)
-
-  const navigate = useNavigate()
-
-  const form = useForm({
-    defaultValues: {
-      name: "",
-      email: "",
-      password: "",
-      rePassword: "",
-      dateOfBirth: "",
-      gender: ""
-    },
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    defaultValues: { name: "", email: "", password: "", rePassword: "", dateOfBirth: "", gender: "" },
     resolver: zodResolver(schema),
     mode: "onChange"
-  })
+  });
 
-  const { register, handleSubmit } = form
-
-  function handelRegister(value) {
-    setIsLoding(true);
+  function handleRegister(value) {
+    setIsLoading(true);
     axios.post(`https://route-posts.routemisr.com/users/signup`, value)
-      .then(res => {
-        // console.log('Full response:', res.data);
-        setSucces(true)
-        swal({
-          title: "Success!",
-          text: "Registration successful!",
-          icon: "success",
-          timer: 2000,
-          buttons: false
-        }).then(() => {
-          navigate("/home")
-        });
-
-        setTimeout(() => {
-          setSucces(false)
-        }, 2000)
+      .then(() => {
+        swal({ title: "نجاح!", text: "تم إنشاء حسابك في My Social App", icon: "success", timer: 2000, buttons: false })
+        .then(() => navigate("/")); 
       })
       .catch(err => {
-        // console.error('Error details:', err);
-
-        if (err.response) {
-          // console.log('Server said:', err.response.data);
-
-          setError(true)
-
-          swal({
-            title: "warning!",
-            text: err.response?.data?.message || "Something went wrong",
-            icon: "error",
-            timer: 2000,
-            buttons: false
-          })
-          setTimeout(() => {
-            setError(false)
-          }, 3000)
-        }
-      }
-      ).finally(() => setIsLoding(false)
-      )
+        swal({ title: "خطأ!", text: err.response?.data?.message || "حدث خطأ ما", icon: "error" });
+      })
+      .finally(() => setIsLoading(false));
   }
 
   return (
-    <>
+    <div className="min-h-screen flex bg-[#F8FAFC]">
+      
+      {/* القسم الأيسر: واجهة My Social App */}
+      <div className="hidden lg:flex w-1/2 bg-[#0B2C5A] items-center justify-center relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-[-5%] left-[-5%] w-80 h-80 rounded-full border-[2px] border-white animate-pulse"></div>
+          <div className="absolute bottom-[10%] right-[10%] w-64 h-64 border-[1px] border-white rotate-12"></div>
+        </div>
+        <div className="relative z-10 text-center px-12">
+          <h1 className="text-6xl font-black text-white mb-4 tracking-tight uppercase">My Social App</h1>
+          <p className="text-blue-100 text-xl font-light">تواصل، شارك، واستكشف عالمك الخاص</p>
+        </div>
+      </div>
 
-      {/* ------------------ */}
-      <div className=' flex overflow-hidden bg-gradient-to-br from-pink-50 via-orange-50 to-pink-50'>
+      {/* القسم الأيمن: نموذج التسجيل */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 py-12 overflow-y-auto">
+        <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-[#0B2C5A]">انضم إلينا الآن</h2>
+            <p className="text-gray-500 mt-2 text-sm">كن جزءاً من مجتمع My Social App</p>
+          </div>
 
-<div className="w-1/2 min-h-screen">
-  <div className="relative min-h-screen overflow-hidden flex items-center justify-center px-6 py-12">
+          <div className="flex gap-3 mb-6">
+            <button type="button" className="flex-1 flex items-center justify-center gap-2 border border-gray-100 py-3 rounded-2xl hover:bg-gray-50 transition-all text-sm font-medium">
+              <FcGoogle className="text-xl" /> Google
+            </button>
+            <button type="button" className="flex-1 flex items-center justify-center gap-2 bg-[#1877F2] text-white py-3 rounded-2xl hover:opacity-90 transition-all text-sm font-medium">
+              <FaFacebookF className="text-xl" /> Facebook
+            </button>
+          </div>
 
-    <div className="relative z-10 max-w-3xl w-full text-center space-y-10">
-      <h1 className="text-7xl sm:text-8xl md:text-[9rem] font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-orange-600 animate-pulse-slow select-none">
-        Welcome
-      </h1>
+          <form onSubmit={handleSubmit(handleRegister)} className="space-y-4 text-right" dir="rtl">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 mb-1 mr-1">الاسم الكامل</label>
+              <input {...register("name")} className="w-full px-4 py-2.5 rounded-xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#0B2C5A] outline-none transition-all" />
+              {errors.name && <p className="text-red-500 text-[10px] mt-1">{errors.name.message}</p>}
+            </div>
 
-      <div className="space-y-5">
-        <h2 className="text-4xl sm:text-5xl font-bold text-gray-900">
-          Hey there! 
-        </h2>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 mb-1 mr-1">البريد الإلكتروني</label>
+              <input {...register("email")} className="w-full px-4 py-2.5 rounded-xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#0B2C5A] outline-none transition-all" />
+              {errors.email && <p className="text-red-500 text-[10px] mt-1">{errors.email.message}</p>}
+            </div>
 
-        <p className="text-lg sm:text-xl text-gray-700 max-w-xl mx-auto leading-relaxed">
-          Good to see you again. Ready when you are~
-        </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="relative">
+                <label className="block text-xs font-bold text-gray-400 mb-1 mr-1">كلمة المرور</label>
+                <div className="relative">
+                  <input type={showPassword ? "text" : "password"} {...register("password")} className="w-full px-4 py-2.5 rounded-xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#0B2C5A] outline-none transition-all pl-10" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 left-3 flex items-center text-gray-400">
+                    {showPassword ? <IoEyeOffOutline size={18} /> : <IoEyeOutline size={18} />}
+                  </button>
+                </div>
+                {errors.password && <p className="text-red-500 text-[10px] mt-1">{errors.password.message}</p>}
+              </div>
+
+              <div className="relative">
+                <label className="block text-xs font-bold text-gray-400 mb-1 mr-1">تأكيد الكلمة</label>
+                <div className="relative">
+                  <input type={showRePassword ? "text" : "password"} {...register("rePassword")} className="w-full px-4 py-2.5 rounded-xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#0B2C5A] outline-none transition-all pl-10" />
+                  <button type="button" onClick={() => setShowRePassword(!showRePassword)} className="absolute inset-y-0 left-3 flex items-center text-gray-400">
+                    {showRePassword ? <IoEyeOffOutline size={18} /> : <IoEyeOutline size={18} />}
+                  </button>
+                </div>
+                {errors.rePassword && <p className="text-red-500 text-[10px] mt-1">{errors.rePassword.message}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 mb-1 mr-1">تاريخ الميلاد</label>
+                <input type="date" {...register("dateOfBirth")} className="w-full px-4 py-2.5 rounded-xl border border-gray-100 bg-gray-50 focus:bg-white outline-none" />
+                {errors.dateOfBirth && <p className="text-red-500 text-[10px] mt-1">{errors.dateOfBirth.message}</p>}
+              </div>
+              <div className="flex gap-4 p-2.5 bg-gray-50 rounded-xl border border-gray-100 justify-around">
+                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                  <input type="radio" {...register("gender")} value="male" className="accent-[#0B2C5A]" /> ذكر
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                  <input type="radio" {...register("gender")} value="female" className="accent-[#0B2C5A]" /> أنثى
+                </label>
+              </div>
+            </div>
+
+            <button disabled={isLoading} className="w-full py-4 bg-[#0B2C5A] text-white font-bold rounded-2xl shadow-lg shadow-blue-900/20 hover:bg-[#082144] transition-all flex items-center justify-center mt-6">
+              {isLoading ? <ClipLoader size={20} color="#fff" /> : "إنشاء الحساب"}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-gray-500">
+            لديك حساب بالفعل؟ <Link to="/" className="text-[#0B2C5A] font-bold hover:underline">سجل دخولك</Link>
+          </p>
+        </div>
       </div>
     </div>
-
-    <p className="absolute bottom-8 text-sm text-gray-600 opacity-70">
-      Your space is waiting
-    </p>
-
-  </div>
-</div>
-
-        {/* ------------------------ */}
-        <div className="min-h-screen w-1/2 flex items-center justify-center  px-4 py-12">
-          <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-            <h1 className="text-4xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-orange-600 mb-8">
-              Create Account
-            </h1>
-            
-                        <div className=' flex my-7'>
-            
-                          <button
-            
-                            className="w-full w-1/2 flex items-center justify-center gap-3 mx-2 bg-gradient-to-r from-pink-600 to-orange-600   hover:bg-gradient-to-l hover:from-pink-600 hover:to-orange-600 border-gray-300 text-white py-3.5 px-4 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 font-medium shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                          >
-                            <FcGoogle className="text-2xl" />
-                            Google
-                          </button>
-            
-                          <button
-            
-                            className="w-full w-1/2 mx-2 flex items-center justify-center gap-3  bg-gradient-to-r from-pink-600 to-orange-600   hover:bg-gradient-to-l hover:from-pink-600 hover:to-orange-600 text-white py-3.5 px-4 rounded-xl  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-medium shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                          >
-                            <FaFacebookF className="text-2xl" />
-                            Facebook
-                          </button>
-                        </div>
-                        <p className=' text-gray-700 mb-2 text-center'> or continue with email</p>
-<hr className='mb-5 text-gray-500 w-10/12 m-auto' />
-            <form onSubmit={handleSubmit(handelRegister)} className="space-y-6 ">
-              <div className="relative">
-                <input
-                  {...register("name")}
-                  type="text"
-                  id="name"
-                  className="block w-full px-4 py-3 text-gray-700 bg-transparent border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none peer transition-all duration-200"
-                  placeholder=" "
-                />
-                <label
-                  htmlFor="name"
-                  className="absolute text-sm text-gray-500 duration-300 transform -translate-y-10 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-indigo-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-10 left-1 pointer-events-none"
-                >
-                  Full Name
-                </label>
-              </div>
-
-              <div className="relative">
-                <input
-                  {...register("email")}
-                  type="email"
-                  id="email"
-                  className="block w-full px-4 py-3 text-gray-700 bg-transparent border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none peer transition-all duration-200"
-                  placeholder=" "
-                />
-                <label
-                  htmlFor="email"
-                  className="absolute text-sm text-gray-500 duration-300 transform -translate-y-10 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-indigo-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-10 left-1 pointer-events-none"
-                >
-                  Email Address
-                </label>
-              </div>
-
-              <div className="relative">
-                <input
-                  {...register("password")}
-                  type="password"
-                  id="password"
-                  className="block w-full px-4 py-3 text-gray-700 bg-transparent border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none peer transition-all duration-200"
-                  placeholder=" "
-                />
-                <label
-                  htmlFor="password"
-                  className="absolute text-sm text-gray-500 duration-300 transform -translate-y-10 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-indigo-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-10 left-1 pointer-events-none"
-                >
-                  Password
-                </label>
-              </div>
-
-              <div className="relative">
-                <input
-                  {...register("rePassword")}
-                  type="password"
-                  id="rePassword"
-                  className="block w-full px-4 py-3 text-gray-700 bg-transparent border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none peer transition-all duration-200"
-                  placeholder=" "
-                />
-                <label
-                  htmlFor="rePassword"
-                  className="absolute text-sm text-gray-500 duration-300 transform -translate-y-10 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-indigo-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-10 left-1 pointer-events-none"
-                >
-                  Confirm Password
-                </label>
-              </div>
-
-              <div className="relative">
-                <input
-                  {...register("dateOfBirth")}
-                  type="date"
-                  id="dateOfBirth"
-                  className="block w-full px-4 py-3 text-gray-700 bg-transparent border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none peer transition-all duration-200"
-                />
-                <label
-                  htmlFor="dateOfBirth"
-                  className="absolute text-sm text-gray-500 duration-300 transform -translate-y-10 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-indigo-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-10 left-1 pointer-events-none"
-                >
-                  Date of Birth
-                </label>
-              </div>
-
-              <div className="flex items-center space-x-8 pt-2">
-                <div className="flex items-center">
-                  <input
-                    {...register("gender")}
-                    id="male"
-                    type="radio"
-                    value="male"
-                    className="w-5 h-5 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                  />
-                  <label htmlFor="male" className="ml-3 text-sm font-medium text-gray-700">
-                    Male
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    {...register("gender")}
-                    id="female"
-                    type="radio"
-                    value="female"
-                    className="w-5 h-5 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                  />
-                  <label htmlFor="female" className="ml-3 text-sm font-medium text-gray-700">
-                    Female
-                  </label>
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              {/* <button
-                type="submit"
-                className="w-full py-3.5 px-4 mt-6 text-white font-semibold text-lg bg-gradient-to-r from-pink-600 to-orange-600   hover:bg-gradient-to-l hover:from-pink-600 hover:to-orange-600
-                rounded-xl focus:ring-4 focus:ring-indigo-300 focus:outline-none shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5"
-              >
-
-                {isLoding ? <ClipLoader size={40} color="#f97316" /> : 'Create Account '}
-              </button> */}
-              <button
-                type="submit"
-                disabled={isLoding}
-                className="w-full py-3.5 px-4 mt-6 text-white font-semibold text-lg bg-gradient-to-r from-pink-600 to-orange-600 rounded-xl"
-              >
-                {isLoding ? (
-                  <ClipLoader size={25} color="#fff" />
-                ) : (
-                  "Create Account"
-                )}
-              </button>
-            </form>
-
-            <p className="mt-6 text-center text-sm text-gray-600">
-              Already have an account?{' '}
-              <Link to="/" className="text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-orange-600 hover:text-orange-800 font-medium">
-                Sign in
-              </Link>
-            </p>
-          </div>
-        </div>
-
-
-      </div>
-
-    </>
   )
 }

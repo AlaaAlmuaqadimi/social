@@ -1,379 +1,190 @@
 import { Link } from 'react-router-dom';
-import { Card, CardHeader, CardBody, CardFooter, Divider, Image } from "@heroui/react";
+import { Card, CardHeader, CardBody, CardFooter, Divider, Image, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Textarea } from "@heroui/react";
 import CommentCreate from "../CommentCreate/CommentCreate";
-import PostDetails from '../postDetails/PostDetails';
-import AllComment from '../AllComment/AllComment';
 import { HiOutlineDotsVertical } from "react-icons/hi";
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button } from "@heroui/react";
 import { AuthContext } from '../Context/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useContext, useState } from 'react';
 import { toast } from "react-toastify";
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Textarea } from "@heroui/react";
-import { AiFillLike } from "react-icons/ai";
+import { AiFillLike, AiOutlineLike } from "react-icons/ai";
 import { FaComment } from "react-icons/fa";
-import { PiDeviceRotateBold } from "react-icons/pi";
+import { PiShareFatBold } from "react-icons/pi";
 
+export default function PostCard({ postInfo, queryKey }) {
+  const { body, image, likes, commentsCount, sharesCount, topComment, user, createdAt, id } = postInfo;
+  const { userId, userToken } = useContext(AuthContext);
+  const isCardMyPost = user._id === userId;
+  const queryClient = useQueryClient();
 
-export default function PostCard({ postInfo, queryKey, postId }) {
-  const { body, image, likes, commentsCount, sharesCount, topComment, user, createdAt, isShare, id } = postInfo;
-  const { userId, userToken } = useContext(AuthContext)
-  const { _id } = user
-  const isCardMyPost = _id === userId;
-  const comment = topComment?.content
-  const commentUser = topComment?.commentCreator?.name
-  const commentPhoto = topComment?.commentCreator?.photo
-  const commentCreatorId = topComment?.commentCreator?._id;
-  const isMyComment = commentCreatorId === userId;
-  const queryClient = useQueryClient()
-  //  Delet Post
-  function HandelDeletCatd(postId) {
+  // تعديل الـ Headers لتعمل مع الـ API بشكل صحيح
+  const config = { headers: { token: userToken } };
 
-    return axios.delete(
-      `https://route-posts.routemisr.com/posts/${postId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${userToken}`
-        }
-      }
-    )
-  }
-
-  const { isPending, mutate: deletCard } = useMutation({
-    mutationFn: HandelDeletCatd,
-
-    onSuccess: () => {
-
-      queryClient.invalidateQueries({ queryKey: ['getPost'] })
-      toast.success('Deleted successfully', {
-        autoClose: 2000
-      })
-    },
-
-    onError: (err) => {
-      toast.error('Error', {
-        autoClose: 2000
-      })
-    }
-  })
-  // update post
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [selectedPost, setSelectedPost] = useState(null);
-  const [editImage, setEditImage] = useState(null);
-  const [previewImage, setPreviewImage] = useState(null);
-  function handleUpdatePost({ postId, formData }) {
-    return axios.put(
-      `https://route-posts.routemisr.com/posts/${postId}`,
-      formData,
-      {
-        headers: {
-          Authorization: `Bearer ${userToken}`,
-        }
-      }
-    );
-  }
-
-  const { mutate: updatePost } = useMutation({
-    mutationFn: handleUpdatePost,
+  // --- Mutations ---
+  const { mutate: deletCard } = useMutation({
+    mutationFn: (postId) => axios.delete(`https://route-posts.routemisr.com/posts/${postId}`, config),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['getPost'] });
-      toast.success('Post updated successfully', { autoClose: 2000 });
-    },
-    onError: (err) => {
-      toast.error('Failed to update post', { autoClose: 2000 });
-    },
+      toast.success('Post removed');
+    }
   });
 
-  // deletComment
-  function HandelDeletComment({ postId, commentId }) {
-    return axios.delete(
-      `https://route-posts.routemisr.com/posts/${postId}/comments/${commentId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${userToken}`
-        }
-      }
-    );
-  }
+  const { mutate: updatePost } = useMutation({
+    mutationFn: ({ postId, formData }) => axios.put(`https://route-posts.routemisr.com/posts/${postId}`, formData, config),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['getPost'] });
+      toast.success('Post updated');
+      setIsEditOpen(false);
+    }
+  });
 
   const { mutate: deletComment } = useMutation({
-    mutationFn: HandelDeletComment,
-
+    mutationFn: ({ postId, commentId }) => axios.delete(`https://route-posts.routemisr.com/posts/${postId}/comments/${commentId}`, config),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKey });
-      toast.success('Comment Deleted successfully', { autoClose: 2000 });
-    },
-    onError: (err) => {
-      toast.error('Failed to delete comment', { autoClose: 2000 });
+      toast.success('Comment deleted');
     }
   });
 
-  // update Comment
+  // --- States ---
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState(image);
+  const [editImage, setEditImage] = useState(null);
 
-  const [isEditCommentOpen, setIsEditCommentOpen] = useState(false);
-  const [editedComment, setEditedComment] = useState('');
-
-  function handleUpdateComment({ commentId, content }) {
-    return axios.put(
-      `https://route-posts.routemisr.com/comments/${commentId}`,
-      { content },
-      {
-        headers: {
-          Authorization: `Bearer ${userToken}`
-        }
-      }
-    );
-  }
-  const { mutate: updateComment } = useMutation({
-    mutationFn: handleUpdateComment,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-      toast.success("Comment updated successfully");
-
-    },
-    onError: () => {
-      toast.error("Failed to update comment");
-    }
-  });
   return (
-    <div>
-
-      <Card className=" bg-gradient-to-r from-pink-500 to-orange-400  ">
-        <CardHeader className="flex justify-between gap-5 ">
-          <div className=" flex">
-            <Image
-              alt="heroui logo"
-              height={40}
-              radius="sm"
-              src={user.photo}
-              width={40}
-            />
-            <div className="flex mx-2 flex-col">
-              <p className="text-md">{user.name}</p>
-              <p className="text-small text-default-500">{new Date(createdAt).toLocaleDateString()}</p>
-            </div>
-          </div>
-          <div>
-
-            {isCardMyPost &&
-              <Dropdown className='bg-pink-100 rounded-3xl'>
-                <DropdownTrigger>
-                  <HiOutlineDotsVertical />
-                </DropdownTrigger>
-                <DropdownMenu aria-label="Static Actions">
-                  <DropdownItem key="new">Save</DropdownItem>
-                  <DropdownItem
-                    onClick={() => {
-                      setSelectedPost(postInfo);
-                      setEditImage(null);
-                      setPreviewImage(postInfo.image);
-                      setIsEditOpen(true);
-                    }}
-                  >
-                    Edit
-                  </DropdownItem>
-                  <DropdownItem onClick={() => deletCard(id)} key="delete" className="text-danger" color="danger">
-                    Delete
-                  </DropdownItem>
-                </DropdownMenu>
-              </Dropdown>
-            }
-          </div>
-        </CardHeader>
-        <hr />
-        <Divider className="flex m-auto" />
-        <CardBody className="m-auto">
-          <p className=" text-center my-4">{body}</p>
+    <Card className="bg-white border border-gray-100 shadow-sm rounded-[2rem] overflow-hidden mb-6">
+      {/* Header: User Info & Options */}
+      <CardHeader className="flex justify-between p-5 pb-3">
+        <div className="flex items-center gap-3">
           <Image
-            alt={user.name}
+            alt="user"
+            className="rounded-xl object-cover border border-gray-50"
+            height={45}
+            src={user.photo}
+            width={45}
+          />
+          <div className="flex flex-col">
+            <p className="text-sm font-bold text-[#0B2C5A]">{user.name}</p>
+            <p className="text-[10px] text-gray-400 font-medium">{new Date(createdAt).toLocaleDateString()}</p>
+          </div>
+        </div>
+        
+        {isCardMyPost && (
+          <Dropdown className="rounded-2xl border border-gray-50 shadow-xl">
+            <DropdownTrigger>
+              <Button isIconOnly variant="light" radius="full" size="sm" className="text-gray-400">
+                <HiOutlineDotsVertical size={20} />
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Actions" variant="flat">
+              <DropdownItem key="edit" onClick={() => setIsEditOpen(true)}>Edit Post</DropdownItem>
+              <DropdownItem key="delete" className="text-danger" color="danger" onClick={() => deletCard(id)}>
+                Delete Post
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        )}
+      </CardHeader>
+
+      {/* Body: Text & Image */}
+      <CardBody className="px-5 pt-0 pb-4">
+        <p className="text-gray-700 text-sm mb-4 leading-relaxed">{body}</p>
+        {image && (
+          <Image
+            alt="post content"
+            className="w-full object-cover rounded-2xl"
             src={image}
           />
-        </CardBody>
-        <Divider />
-        <hr />
-        <CardFooter className="flex justify-between">
-          <div><h6> <AiFillLike size={25} /> {likes.length}</h6></div>
-          <div><h6><FaComment size={25} /> {commentsCount}</h6></div>
-          <div><h6><PiDeviceRotateBold size={25} />
-            {sharesCount}</h6></div>
-          <div>
-            <Link to={`/PostDetails/${id}`} className=" p-1 rounded-2xl bg-gradient-to-r from-orange-600 to-pink-500 m-4">
-              View details
-            </Link>
+        )}
+      </CardBody>
+
+      <Divider className="opacity-50" />
+
+      {/* Footer: Stats & Interaction */}
+      <CardFooter className="flex flex-col p-4 gap-4">
+        <div className="flex justify-around w-full items-center">
+          <div className="flex items-center gap-2 group cursor-pointer">
+            <AiOutlineLike size={22} className="text-gray-400 group-hover:text-[#0B2C5A] transition" />
+            <span className="text-xs font-bold text-gray-500">{likes.length}</span>
           </div>
-
-        </CardFooter>
-        <div>
-          <CommentCreate postId={id} queryKey={['getPost']} />
-
+          <div className="flex items-center gap-2 group cursor-pointer">
+            <FaComment size={18} className="text-gray-400 group-hover:text-blue-500 transition" />
+            <span className="text-xs font-bold text-gray-500">{commentsCount}</span>
+          </div>
+          <div className="flex items-center gap-2 group cursor-pointer">
+            <PiShareFatBold size={20} className="text-gray-400 group-hover:text-green-500 transition" />
+            <span className="text-xs font-bold text-gray-500">{sharesCount}</span>
+          </div>
+          <Link to={`/PostDetails/${id}`} className="text-[11px] font-black text-[#0B2C5A] hover:underline uppercase tracking-tighter">
+            View Details
+          </Link>
         </div>
-        <div className='flex justify-between'>
-          <div className="flex  my-2">
-            <div className="mx-3" >
-              <Image
-                className=" rounded-2xl"
-                alt="heroui logo"
-                height={40}
-                radius="sm"
-                src={commentPhoto}
-                width={40}
-              /></div>
-            <div>
-              <p className="font-bold text-sm">
-                {commentUser}
-              </p>
-              <p className="text-default-500 text-sm">
-                {comment}
-              </p>
+
+        {/* Comment Creation Section */}
+        <div className="w-full bg-gray-50 rounded-2xl p-1">
+          <CommentCreate postId={id} queryKey={['getPost']} />
+        </div>
+
+        {/* Top Comment Preview */}
+        {topComment && (
+          <div className="w-full flex items-start gap-3 p-3 bg-blue-50/30 rounded-2xl border border-blue-50/50">
+            <Image
+              className="rounded-lg object-cover"
+              height={32}
+              src={topComment.commentCreator.photo}
+              width={32}
+            />
+            <div className="flex-1">
+              <div className="flex justify-between items-center">
+                <p className="text-[12px] font-bold text-[#0B2C5A]">{topComment.commentCreator.name}</p>
+                {topComment.commentCreator._id === userId && (
+                  <button onClick={() => deletComment({ postId: id, commentId: topComment._id })} className="text-[10px] text-red-400 hover:text-red-600">Delete</button>
+                )}
+              </div>
+              <p className="text-[12px] text-gray-600">{topComment.content}</p>
             </div>
           </div>
+        )}
+      </CardFooter>
 
-          <div className='m-4'>
-            {isMyComment &&
-              <Dropdown className=' bg-pink-100'>
-                <DropdownTrigger>
-                  <HiOutlineDotsVertical />
-                </DropdownTrigger>
-                <DropdownMenu aria-label="Static Actions">
-                  <DropdownItem
-                    onClick={() => {
-                      setEditedComment(topComment?.content || '');
-                      setIsEditCommentOpen(true);
-                    }}
-                    key="edit"
-                  >
-                    Edit
-                  </DropdownItem>
-                  <DropdownItem
-                    onClick={() => {
-                      if (topComment?._id) {
-                        deletComment({
-                          postId: id,
-                          commentId: topComment._id
-                        });
-                      } else {
-                        toast.warn("No comment ID found");
-                      }
-                    }}
-                    key="delete" className="text-danger" color="danger">
-                    Delete
-                  </DropdownItem>
-                </DropdownMenu>
-              </Dropdown>
-            }
-          </div>
-        </div>
-        {/* {commentsCount > 1 &&
-          <Link className=" text-blue-700 m-4">
-            View all comments...
-
-          </Link>
-        } */}
-        {/* <CommentCreate postId={id} queryKey={queryKey} /> */}
-      </Card>
-      <Modal className='bg-amber-100' isOpen={isEditOpen} onOpenChange={setIsEditOpen}>
+      {/* Edit Modal */}
+      <Modal isOpen={isEditOpen} onOpenChange={setIsEditOpen} backdrop="blur" className="rounded-[2.5rem]">
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader>Edit Post</ModalHeader>
+              <ModalHeader className="text-[#0B2C5A]">Edit Your Story</ModalHeader>
               <ModalBody>
                 <Textarea
-                  defaultValue={selectedPost?.body}
+                  label="What's on your mind?"
+                  variant="flat"
+                  defaultValue={body}
                   id="editBody"
+                  classNames={{ inputWrapper: "bg-gray-100 rounded-2xl" }}
                 />
-                {previewImage && (
-                  <img
-                    src={previewImage}
-                    alt="preview"
-                    className="my-3 rounded-xl"
-                  />
-
-                )}
-                <input
-                  type="file"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      setEditImage(file);
-                      setPreviewImage(URL.createObjectURL(file));
-                    }
-                  }}
-                />
+                <div className="relative group">
+                  <img src={previewImage} alt="preview" className="w-full h-48 object-cover rounded-2xl mt-4 border border-gray-100" />
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition rounded-2xl cursor-pointer text-white text-xs font-bold">
+                    Change Image
+                    <input type="file" className="hidden" onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) { setEditImage(file); setPreviewImage(URL.createObjectURL(file)); }
+                    }} />
+                  </label>
+                </div>
               </ModalBody>
               <ModalFooter>
-                <Button color="danger" onPress={onClose}>
-                  Cancel
-                </Button>
-                <Button
-                  color="primary"
-                  onPress={() => {
-                    const newBody = document.getElementById("editBody").value;
-                    const formData = new FormData();
-                    formData.append("body", newBody);
-                    if (editImage) {
-                      formData.append("image", editImage);
-                    }
-                    updatePost({
-                      postId: id,
-                      formData,
-                    });
-                    onClose();
-                  }}
-                >
-                  Update
-                </Button>
-
+                <Button variant="light" onPress={onClose} className="rounded-xl font-bold">Cancel</Button>
+                <Button className="bg-[#0B2C5A] text-white rounded-xl font-bold" onPress={() => {
+                   const formData = new FormData();
+                   formData.append("body", document.getElementById("editBody").value);
+                   if (editImage) formData.append("image", editImage);
+                   updatePost({ postId: id, formData });
+                }}>Update Post</Button>
               </ModalFooter>
             </>
           )}
         </ModalContent>
       </Modal>
-      <Modal
-        className=' bg-orange-600'
-        isOpen={isEditCommentOpen}
-        onOpenChange={setIsEditCommentOpen}
-      >
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader>Edit Comment</ModalHeader>
-
-              <ModalBody>
-                <Textarea
-                  value={editedComment}
-                  onChange={(e) => setEditedComment(e.target.value)}
-                />
-              </ModalBody>
-
-              <ModalFooter>
-                <Button color="danger" onPress={onClose}>
-                  Cancel
-                </Button>
-
-                <Button
-                  color="primary"
-                  onPress={() => {
-                    if (!editedComment.trim()) {
-                      toast.error("Comment is required");
-                      return;
-                    }
-
-                    updateComment({
-                      commentId: topComment._id,
-                      content: editedComment
-                    });
-
-                    onClose();
-                  }}
-                >
-                  Update
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
-    </div>
+    </Card>
   );
 }

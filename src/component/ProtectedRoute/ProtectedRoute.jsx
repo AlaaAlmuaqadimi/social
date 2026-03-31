@@ -1,25 +1,25 @@
-import { Navigate } from "react-router-dom"
+import { useContext } from "react";
+import { Navigate } from "react-router-dom";
+import { AuthContext } from "../Context/AuthContext";
 
 export default function ProtectedRoute({ children, isAuth }) {
-  const token = localStorage.getItem("Tkn")
+  // الاعتماد على حالة التوكن من الكونتكست لضمان المزامنة
+  const { userToken } = useContext(AuthContext);
+  
+  // نتحقق من localStorage كخيار احتياطي سريع
+  const token = userToken || localStorage.getItem("Tkn");
 
   if (isAuth) {
-
+    // لو المستخدم يحاول دخول Login/Register وهو مسجل دخول فعلاً
     if (token) {
-      return <Navigate to="/" />
-    } else {
-      return children
+      return <Navigate to="/" />;
     }
+    return children;
   } else {
-
-    if (!isAuth) {
-      if (!token) {
-        return <Navigate to="/login" />
-      } else {
-        return children
-      }
+    // لو يحاول دخول صفحة محمية (Home/Profile) وهو ليس مسجل دخول
+    if (!token) {
+      return <Navigate to="/login" />;
     }
-
-    return children
+    return children;
   }
 }
